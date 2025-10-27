@@ -1,5 +1,7 @@
+import logging
+
 import httpx
-from quart import Quart, render_template, Response
+from quart import Quart, Response, render_template
 
 app = Quart(__name__)
 
@@ -17,7 +19,8 @@ async def index():
 @app.route("/scoutevaluator/<path:subpath>")
 async def proxy_evaluator(subpath):
     target = TARGETS["evaluator"].format(subpath)
-    print(target)
+    logging.info(f"Attempting re-route to {target}")
+
     async with httpx.AsyncClient() as client:
         resp = await client.get(target)
 
@@ -25,6 +28,10 @@ async def proxy_evaluator(subpath):
     headers.pop("content-encoding", None)
     headers.pop("transfer-encoding", None)
     headers.pop("content-length", None)
+
+    logging.debug(
+        f"Re-route returned code {resp.status_code} with {resp.text}"
+    )
 
     return Response(
         resp.text, resp.status_code, headers=headers  # type: ignore
