@@ -17,11 +17,17 @@ async def index():
 @app.route("/scoutevaluator/<path:subpath>")
 async def proxy_evaluator(subpath):
     target = TARGETS["evaluator"].format(subpath)
+    print(target)
     async with httpx.AsyncClient() as client:
         resp = await client.get(target)
 
+    headers = dict(resp.headers)
+    headers.pop("content-encoding", None)
+    headers.pop("transfer-encoding", None)
+    headers.pop("content-length", None)
+
     return Response(
-        resp.content, resp.status_code, headers=resp.headers  # type: ignore
+        resp.text, resp.status_code, headers=headers  # type: ignore
     )
 
 
