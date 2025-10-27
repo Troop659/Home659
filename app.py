@@ -4,6 +4,8 @@ import httpx
 from quart import Quart, Response, render_template
 
 app = Quart(__name__)
+logger = app.logger
+logger.setLevel(logging.INFO)
 
 TARGETS: dict[str, str] = {
     "evaluator": "https://scoutevaluator.onrender.com/{}"
@@ -29,7 +31,7 @@ async def proxy_evaluator_static(subpath):
 
 
 async def reroute_to(url: str) -> Response:
-    logging.info(f"Attempting re-route to {url}")
+    logger.info(f"Attempting re-route to {url}")
     async with httpx.AsyncClient() as client:
         resp = await client.get(url)
 
@@ -38,7 +40,7 @@ async def reroute_to(url: str) -> Response:
     headers.pop("transfer-encoding", None)
     headers.pop("content-length", None)
 
-    logging.debug(
+    logger.debug(
         f"Re-route returned code {resp.status_code} with {resp.text}"
     )
 
