@@ -8,7 +8,7 @@ logger = app.logger
 logger.setLevel(logging.INFO)
 
 TARGETS: dict[str, str] = {
-    "evaluator": "https://scoutevaluator.onrender.com/{}"
+    "scoutevaluator": "https://scoutevaluator.onrender.com/"
 }
 
 
@@ -17,20 +17,13 @@ async def index():
     return await render_template("index.html")
 
 
-@app.route("/scoutevaluator", defaults={'subpath': ''})
-@app.route("/scoutevaluator/<path:subpath>")
-async def proxy_evaluator(subpath):
-    target = TARGETS["evaluator"].format(subpath)
-    return await reroute_to(target)
+@app.route("/<path:subpath>")
+async def proxy(subpath: str):
+    target = TARGETS[subpath]
+    return await reroute_to(target, subpath)
 
 
-@app.route("/scoutevaluator/static/<path:subpath>")
-async def proxy_evaluator_static(subpath):
-    target = f"https://scoutevaluator.onrender.com/static/{subpath}"
-    return await reroute_to(target)
-
-
-async def reroute_to(url: str) -> Response:
+async def reroute_to(url: str, sub: str) -> Response:
     logger.info(f"Attempting re-route to {url}")
     async with httpx.AsyncClient() as client:
         resp = await client.get(url)
@@ -40,11 +33,20 @@ async def reroute_to(url: str) -> Response:
     headers.pop("transfer-encoding", None)
     headers.pop("content-length", None)
 
+    content = resp.content
+    if "text/html" in resp.headers.get("content-type", ""):
+        content = content.decode("utf-8")
+        content = content.replace(
+            "<head>",
+            f'<head><base href="{sub}">'
+        )
+        content = content.encode("utf-8")
+
     logger.debug(
-        f"Re-route returned code {resp.status_code} with {resp.text}"
+        f"Re-route returned code {resp.status_code} with {content}"
     )
 
-    return Response(resp.content, resp.status_code, headers=headers)
+    return Response(content, resp.status_code, headers=headers)
 
 
 if __name__ == '__main__':
