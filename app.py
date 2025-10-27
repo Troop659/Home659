@@ -19,10 +19,19 @@ async def index():
 @app.route("/scoutevaluator/<path:subpath>")
 async def proxy_evaluator(subpath):
     target = TARGETS["evaluator"].format(subpath)
-    logging.info(f"Attempting re-route to {target}")
+    return await reroute_to(target)
 
+
+@app.route("/scoutevaluator/static/<path:subpath>")
+async def proxy_evaluator_static(subpath):
+    target = f"https://scoutevaluator.onrender.com/static/{subpath}"
+    return await reroute_to(target)
+
+
+async def reroute_to(url: str) -> Response:
+    logging.info(f"Attempting re-route to {url}")
     async with httpx.AsyncClient() as client:
-        resp = await client.get(target)
+        resp = await client.get(url)
 
     headers = dict(resp.headers)
     headers.pop("content-encoding", None)
@@ -33,9 +42,7 @@ async def proxy_evaluator(subpath):
         f"Re-route returned code {resp.status_code} with {resp.text}"
     )
 
-    return Response(
-        resp.text, resp.status_code, headers=headers  # type: ignore
-    )
+    return Response(resp.content, resp.status_code, headers=headers)
 
 
 if __name__ == '__main__':
